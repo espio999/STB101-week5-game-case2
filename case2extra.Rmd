@@ -1,0 +1,222 @@
+---
+title: "week5 case2"
+output: html_notebook
+---
+
+```{r setup}
+library(readxl)
+
+price_high = read_excel(
+  "case2.xlsx", sheet = "high", range = "B2:D4", 
+  col_names = FALSE
+)
+phdf = data.frame(price_high)
+
+price_low = read_excel(
+  "case2.xlsx", sheet = "low", range = "B2:D4", 
+  col_names = FALSE
+)
+pldf = data.frame(price_low)
+
+makeVector = function(dat){
+  nc = ncol(dat)
+  
+  for (i in 1:nc){
+    if (i == 1){
+      mydata = dat[,1]
+    }
+    else{
+      mydata = c(mydata, dat[,i])
+    }
+  }
+  
+  return (mydata)
+}
+
+makeData = function(vec){
+  p = length(vec)
+  
+  mydata = data.frame(
+    PRICE = factor(
+      c(
+        rep("H", p/2),
+        rep("L", p/2)
+    )),
+    FUNC = factor(
+      rep(c(
+        rep("FEW", 3),
+        rep("SOME", 3),
+        rep("MANY", 3)
+      ), 2)
+    ),
+    SALES = vec
+  )
+  
+  return (mydata)
+}
+
+drawPrice = function(mydata){
+  curve(
+    dnorm(x, 
+      mean(mydata[mydata$PRICE=="H", "SALES"]), 
+      var(mydata[mydata$PRICE=="H", "SALES"])
+    ),
+    xlim=c(
+      min(mydata$SALES), 
+      max(mydata$SALES)
+    ),
+    col=2, ylab=""
+  )
+  
+  par(new=T)
+  curve(
+    dnorm(x, 
+      mean(mydata[mydata$PRICE=="L", "SALES"]), 
+      var(mydata[mydata$PRICE=="L", "SALES"])
+    ),
+    xlim=c(
+      min(mydata$SALES), 
+      max(mydata$SALES)
+    ),
+    col=3, axes=F, ylab=""
+  )
+  
+  par(xpd=T)
+  legend(
+    par()$usr[2], par()$usr[4],
+    legend=c("H", "L"),
+    pch=20, col=2:3
+  )
+}
+
+drawFunc = function(mydata){
+  curve(
+    dnorm(x, 
+      mean(mydata[mydata$FUNC=="FEW", "SALES"]), 
+      var(mydata[mydata$FUNC=="FEW", "SALES"])
+    ),
+    xlim=c(
+      min(mydata$SALES), 
+      max(mydata$SALES)
+    ),
+    col=2, ylab=""
+  )
+  
+  par(new=T)
+  curve(
+    dnorm(x, 
+      mean(mydata[mydata$FUNC=="SOME", "SALES"]), 
+      var(mydata[mydata$FUNC=="SOME", "SALES"])
+    ),
+    xlim=c(
+      min(mydata$SALES), 
+      max(mydata$SALES)
+    ),
+    col=3, axes=F, ylab=""
+  )
+  
+  par(new=T)
+  curve(
+    dnorm(x, 
+      mean(mydata[mydata$FUNC=="MANY", "SALES"]), 
+      var(mydata[mydata$FUNC=="MANY", "SALES"])
+    ),
+    xlim=c(
+      min(mydata$SALES), 
+      max(mydata$SALES)
+    ),
+    col=4, axes=F, ylab=""
+  )
+  
+  par(xpd=T)
+  legend(
+    par()$usr[2], par()$usr[4],
+    legend=c("F", "S", "M"),
+    pch=20, col=2:4
+  )
+}
+
+salesv = append(makeVector(phdf), makeVector(pldf))
+mydata = makeData(salesv)
+```
+
+#  1) Evaluate Interaction effect between price factor and featue factor
+* significant level: 5%
+
+1. Sum Sq: sum of square (level mean - grand mean)  
+It shows variance between entire samples and factor sample.
+
+2. Mean Sq: sum of square (level mean - grand mean) / freedom degree  
+It shows mean of variance in sample.  
+
+3. Residuals Sum Sq  
+It shows variance of entier sample.
+
+4. F value: #2 / #3
+It shows ratio between variance between entire sample and factor sample.  
+
+## 2 factor ANOVA (non repeated)
+```{r}
+emydata1a=aov(SALES~PRICE+FUNC, mydata)
+summary(emydata1a)
+```
+
+## 2 factor ANOVA (repeated)
+```{r}
+emydata1b=aov(SALES~PRICE*FUNC, mydata)
+summary(emydata1b)
+```
+
+```{r}
+attach(mydata)
+interaction.plot(PRICE, FUNC, SALES)
+interaction.plot(FUNC, PRICE, SALES)
+detach(mydata)
+```
+The chart shows synergy pattern among FUNC.  
+The chart shows different gap of SALES betweeh PRICE factors at each FUNC factor.  
+
+PRICE variance is bigger than Residuals (variance of entire sample).  
+FUNC variance is smaller than Residuals.
+In the other words, size of sales dispersion become bigger in the next order.  
+1. PRICE (high and low)  
+2. Residuals  
+3. PRICE + FUNC  
+4. FUNC (few, some and many)entier sample  
+
+### Conclusion
+Pricing has impact to sales.  
+Interaction effect between pricing and feature has no inpact to sales.
+
+#  2) Evaluate price factor on sales result
+## 1 factor ANOVA
+```{r}
+emydata2=aov(SALES~PRICE, mydata)
+summary(emydata2)
+```
+Mean variacne of PRICE is much bigger than Residuals.  
+It shows sales dispersion between PRICE H and L is much different.
+
+```{r}
+boxplot(SALES~PRICE, mydata)
+```
+```{r fig.width=7.5}
+par(mar=c(5,4,4,5))
+drawPrice(mydata)
+```
+
+#  3) Evaluate feature factor on sales result
+## 1 factor ANOVA
+```{r}
+emydata3=aov(SALES~FUNC, mydata)
+summary(emydata3)
+```
+Mean variacne of FUNC is much smaller than Residuals.  
+It shows sales dispersion among FUNC has not so big difference.
+```{r}
+boxplot(SALES~FUNC, mydata)
+```
+```{r fig.width=7.5}
+par(mar=c(5,4,4,5))
+drawFunc(mydata)
+```
